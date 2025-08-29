@@ -10,6 +10,6 @@ AI Detection Score: Provides an estimated score to show how well the humanized t
 Prerequisites
 You'll need a modern web browser to use the application. No installation is required for the web version.
 Installation & Local Setup
-To run the project locally, follow these steps:
+To run the project locally, follow these steps -
 Run: git https://guptaprakhar031-beep.github.io/Ai-Humanize-/
 
