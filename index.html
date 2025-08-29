@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Content Checker & Humanizer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #1e3a8a, #0b1c3c);
+            color: #d1d5db;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 2rem;
+        }
+
+        .container {
+            background-color: rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            padding: 2rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            max-width: 800px;
+            width: 100%;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .input-area,
+        .output-area {
+            background-color: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-top: 1.5rem;
+            min-height: 150px;
+            transition: all 0.3s ease;
+        }
+
+        textarea {
+            width: 100%;
+            background: transparent;
+            border: none;
+            outline: none;
+            color: #e5e7eb;
+            resize: vertical;
+            min-height: 120px;
+        }
+
+        .ai-score-bar-container {
+            height: 25px;
+            background-color: #374151;
+            border-radius: 9999px;
+            margin-top: 1rem;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .ai-score-bar {
+            height: 100%;
+            border-radius: 9999px;
+            transition: width 1s cubic-bezier(0.25, 1, 0.5, 1);
+            position: relative;
+            background: linear-gradient(90deg, #3b82f6, #60a5fa);
+        }
+
+        .ai-score-bar::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0) 100%);
+        }
+
+        .score-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-weight: bold;
+            color: white;
+            z-index: 10;
+        }
+
+        .result-message {
+            margin-top: 1rem;
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+        .button {
+            padding: 0.75rem 2rem;
+            border-radius: 12px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .button-check {
+            background: linear-gradient(45deg, #10b981, #059669);
+            color: white;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
+        }
+
+        .button-humanize {
+            background: linear-gradient(45deg, #3b82f6, #2563eb);
+            color: white;
+            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+        }
+
+        .button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .output-text {
+            white-space: pre-wrap;
+            line-height: 1.6;
+        }
+
+        /* Typing effect animation */
+        .typing::after {
+            content: '|';
+            animation: blink-caret 0.75s step-end infinite;
+            display: inline-block;
+        }
+
+        @keyframes blink-caret {
+            from,
+            to {
+                opacity: 0;
+            }
+
+            50% {
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1 class="text-3xl font-bold text-center mb-6 text-white">AI Content Auditor</h1>
+        <p class="text-center text-gray-400 mb-6">Paste your content below to check its AI score and humanize it.</p>
+
+        <div class="input-area">
+            <textarea id="contentInput" placeholder="Paste your content here..."></textarea>
+        </div>
+
+        <div class="flex flex-col sm:flex-row justify-center space-y-4 sm:space-y-0 sm:space-x-4 my-6">
+            <button id="checkButton" class="button button-check">Check AI Score</button>
+            <button id="humanizeButton" class="button button-humanize">Humanize Content</button>
+        </div>
+
+        <div id="resultSection" class="output-area hidden">
+            <h2 class="text-xl font-semibold mb-4 text-white">AI Score</h2>
+            <div class="ai-score-bar-container">
+                <div id="aiScoreBar" class="ai-score-bar" style="width: 0%;"></div>
+                <span id="scoreText" class="score-text">0%</span>
+            </div>
+            <p id="resultMessage" class="result-message text-gray-300"></p>
+        </div>
+
+        <div id="humanizedSection" class="output-area hidden">
+            <h2 class="text-xl font-semibold mb-4 text-white">Humanized Content</h2>
+            <p id="humanizedOutput" class="output-text"></p>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const contentInput = document.getElementById('contentInput');
+            const checkButton = document.getElementById('checkButton');
+            const humanizeButton = document.getElementById('humanizeButton');
+            const resultSection = document.getElementById('resultSection');
+            const aiScoreBar = document.getElementById('aiScoreBar');
+            const scoreText = document.getElementById('scoreText');
+            const resultMessage = document.getElementById('resultMessage');
+            const humanizedSection = document.getElementById('humanizedSection');
+            const humanizedOutput = document.getElementById('humanizedOutput');
+
+            // Sample AI content and its humanized version for demonstration
+            const aiContent = "The proliferation of advanced machine learning algorithms has catalyzed a paradigm shift in the digital landscape, enabling the automated generation of sophisticated textual content. This technological breakthrough is predicated on complex neural network architectures, which process and synthesize vast datasets to produce coherent and contextually relevant prose. The implications of this development are manifold, impacting various sectors from journalism to academic research, as the distinction between human and machine-authored work becomes increasingly blurred.";
+            const humanizedContent = "With the rise of powerful machine learning, the way we create content online is changing. We now have programs that can automatically write complex articles, reports, and more. This is all thanks to a new type of technology that uses neural networks to analyze huge amounts of data and then produce writing that sounds natural and makes sense. This technology has huge consequences for many different fields, from news to academic studies. It's getting harder and harder to tell if something was written by a person or a machine.";
+
+            contentInput.value = aiContent;
+
+            // Function to smoothly animate the AI score bar
+            const animateScore = (finalScore) => {
+                const startScore = 0;
+                let currentScore = 0;
+                const duration = 1500; // milliseconds
+                let startTime = null;
+
+                const step = (timestamp) => {
+                    if (!startTime) startTime = timestamp;
+                    const progress = timestamp - startTime;
+                    const percentage = Math.min(progress / duration, 1);
+                    currentScore = Math.floor(startScore + percentage * (finalScore - startScore));
+
+                    aiScoreBar.style.width = `${currentScore}%`;
+                    scoreText.textContent = `${currentScore}%`;
+
+                    if (percentage < 1) {
+                        requestAnimationFrame(step);
+                    } else {
+                        // Display final message
+                        if (finalScore >= 70) {
+                            resultMessage.textContent = 'This content is highly likely to be AI-generated.';
+                        } else if (finalScore >= 40) {
+                            resultMessage.textContent = 'This content shows some characteristics of AI writing.';
+                        } else {
+                            resultMessage.textContent = 'This content appears to be human-written.';
+                        }
+                    }
+                };
+                requestAnimationFrame(step);
+            };
+
+            // Event listener for the "Check AI Score" button
+            checkButton.addEventListener('click', () => {
+                humanizedSection.classList.add('hidden');
+                resultSection.classList.remove('hidden');
+
+                // Resetting score bar
+                aiScoreBar.style.width = '0%';
+                scoreText.textContent = '0%';
+                resultMessage.textContent = '';
+
+                // Simulate processing time with a timeout
+                setTimeout(() => {
+                    // Generate a random, high AI score for the demo
+                    const randomScore = Math.floor(Math.random() * (95 - 70 + 1)) + 70;
+                    animateScore(randomScore);
+                }, 1000);
+            });
+
+            // Function to simulate typing out the text
+            const typeText = (text, element) => {
+                element.innerHTML = ''; // Clear previous text
+                element.classList.add('typing');
+                let charIndex = 0;
+                const typingInterval = setInterval(() => {
+                    if (charIndex < text.length) {
+                        element.innerHTML += text.charAt(charIndex);
+                        charIndex++;
+                    } else {
+                        clearInterval(typingInterval);
+                        element.classList.remove('typing');
+                    }
+                }, 20); // Adjust typing speed here
+            };
+
+            // Event listener for the "Humanize Content" button
+            humanizeButton.addEventListener('click', () => {
+                resultSection.classList.add('hidden');
+                humanizedSection.classList.remove('hidden');
+
+                humanizedOutput.textContent = 'Processing...';
+
+                // Simulate processing time
+                setTimeout(() => {
+                    typeText(humanizedContent, humanizedOutput);
+                }, 1000);
+            });
+        });
+    </script>
+</body>
+
+</html>
